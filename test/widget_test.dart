@@ -7,25 +7,21 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:altaqwa_app/main.dart';
+import 'package:altaqwa_app/services/auth_gate.dart';
 
 void main() {
-  testWidgets('app starts on the branded splash screen', (
+  testWidgets('app starts on the login screen when signed out', (
     WidgetTester tester,
   ) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
-
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Image &&
-            widget.image is AssetImage &&
-            (widget.image as AssetImage).assetName == 'assets/bg_img.png',
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(authStateChanges: Stream<User?>.value(null)),
       ),
-      findsOneWidget,
     );
-    expect(find.text('COMFORT SYSTEMS. DONE RIGHT.'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('LOG IN'), findsOneWidget);
   });
 }

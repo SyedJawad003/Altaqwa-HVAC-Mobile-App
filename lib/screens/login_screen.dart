@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await AuthService().loginUser(
+      await AuthService().signIn(
         email: _email.text,
         password: _password.text,
       );

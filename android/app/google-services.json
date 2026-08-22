@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "870250337538",
+    "project_id": "altaqwa-bc111",
+    "storage_bucket": "altaqwa-bc111.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870250337538:android:8a1bcd7b5f890f0b4a9e1b",
+        "android_client_info": {
+          "package_name": "com.example.altaqwa_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-LpEWM3_6crPx9CdgdJlsQbo5hTEzRtk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

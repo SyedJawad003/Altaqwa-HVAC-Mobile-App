@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../services/auth_service.dart';
+import '../services/auth_gate.dart';
 import '../theme/app_theme.dart';
-import 'login_screen.dart';
-import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,13 +17,10 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _routeUser() async {
-    final user = await AuthService().checkAuthStatus();
     await Future<void>.delayed(const Duration(seconds: 3));
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => user == null ? const LoginScreen() : const HomeScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AuthGate()),
     );
   }
 

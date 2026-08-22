@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'home_screen.dart';
+import 'login_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
@@ -33,18 +33,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await AuthService().registerUser(
+      final authService = AuthService();
+      final user = await authService.signUp(
+        email: _email.text,
+        password: _password.text,
+      );
+      await authService.saveUserProfile(
+        user: user,
         name: _name.text,
         email: _email.text,
         phone: _phone.text,
-        password: _password.text,
       );
+      await authService.signOut();
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Your account is ready.')));
+      ).showSnackBar(
+        const SnackBar(content: Text('Account created. Please log in.')),
+      );
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
         (_) => false,
       );
     } on AuthException catch (error) {

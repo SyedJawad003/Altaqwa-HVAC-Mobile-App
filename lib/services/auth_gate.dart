@@ -20,7 +20,12 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        return snapshot.hasData ? const HomeScreen() : const LoginScreen();
+        final user = snapshot.data;
+        if (user == null) {
+          return const LoginScreen();
+        }
+
+        return const HomeScreen();
       },
     );
   }

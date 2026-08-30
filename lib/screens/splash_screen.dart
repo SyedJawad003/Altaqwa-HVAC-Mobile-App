@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_gate.dart';
+import '../widgets/app_page_route.dart';
 import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -19,9 +20,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _routeUser() async {
     await Future<void>.delayed(const Duration(seconds: 3));
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const AuthGate()),
-    );
+    Navigator.of(context).pushReplacement(appPageRoute<void>(const AuthGate()));
   }
 
   @override
@@ -55,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   ],
                 ),
                 child: Image.asset(
-                  'assets/altaqwa logo.png',
+                  'assets/altaqwa_logo.png',
                   fit: BoxFit.contain,
                   errorBuilder: (_, error, stackTrace) =>
                       const Icon(Icons.ac_unit, color: goldLight, size: 52),

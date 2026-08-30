@@ -20,10 +20,88 @@ class AuthUser {
 }
 
 class AuthService {
+  static const String adminEmail = 'admin@altaqwa.com';
+  static const String adminPassword = 'admin123';
+
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  Future<void> ensureAdminAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null && user.email?.trim().toLowerCase() == adminEmail) {
+        await _firestore.collection('admins').doc(user.uid).set({
+          'uid': user.uid,
+          'email': adminEmail,
+          'name': 'Al Taqwa Administrator',
+          'role': 'admin',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        return;
+      }
+
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: adminEmail,
+        password: adminPassword,
+      );
+
+      await _firestore.collection('admins').doc(credential.user!.uid).set({
+        'uid': credential.user!.uid,
+        'email': adminEmail,
+        'name': 'Al Taqwa Administrator',
+        'role': 'admin',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'email-already-in-use') {
+        return;
+      }
+      if (error.code == 'operation-not-allowed') {
+        throw AuthException('Firebase Email/Password authentication is not enabled in the project.');
+      }
+      throw AuthException(_authErrorMessage(error));
+    }
+  }
+
+  Future<bool> isAdminUser(User user) async {
+    final email = user.email?.trim().toLowerCase();
+    if (email == adminEmail) return true;
+
+    try {
+      final adminSnapshot = await _firestore.collection('admins').doc(user.uid).get();
+      if (adminSnapshot.exists) {
+        final role = (adminSnapshot.data()?['role'] as String? ?? '').trim().toLowerCase();
+        if (role == 'admin') return true;
+      }
+
+      final userSnapshot = await _firestore.collection('users').doc(user.uid).get();
+      final userRole = (userSnapshot.data()?['role'] as String? ?? '').trim().toLowerCase();
+      if (userRole == 'admin') return true;
+    } on FirebaseException {
+      return email == adminEmail;
+    }
+
+    return false;
+  }
+
+  Future<void> saveAdminProfile({
+    required User user,
+    required String name,
+    required String email,
+  }) async {
+    await _firestore.collection('admins').doc(user.uid).set({
+      'uid': user.uid,
+      'name': name.trim(),
+      'email': email.trim().toLowerCase(),
+      'role': 'admin',
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 
   Future<User> signUp({
     required String email,
@@ -44,13 +122,26 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    final normalizedEmail = email.trim().toLowerCase();
     try {
+      if (normalizedEmail == adminEmail && password == adminPassword) {
+        await ensureAdminAccount();
+      }
+
       final credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password: password,
       );
       return credential.user!;
     } on FirebaseAuthException catch (error) {
+      if (normalizedEmail == adminEmail && password == adminPassword) {
+        await ensureAdminAccount();
+        final credential = await _auth.signInWithEmailAndPassword(
+          email: normalizedEmail,
+          password: password,
+        );
+        return credential.user!;
+      }
       throw AuthException(_authErrorMessage(error));
     }
   }

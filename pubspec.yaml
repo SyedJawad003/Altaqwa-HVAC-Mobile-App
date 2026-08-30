@@ -56,10 +56,14 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   assets:
-    - assets/altaqwa logo.png
+    - assets/altaqwa_logo.png
     - assets/bg_img.png
     - assets/login_bg.png
     - assets/regbg.png
+    - assets/menu_bg.png
+    - assets/home_bg.png
+    - assets/hvac_installation.png
+    - assets/services.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

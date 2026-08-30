@@ -4,6 +4,7 @@ import 'home_screen.dart';
 import 'register_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_page_route.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,16 +30,13 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await AuthService().signIn(
-        email: _email.text,
-        password: _password.text,
-      );
+      await AuthService().signIn(email: _email.text, password: _password.text);
       if (!mounted) return;
+
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Welcome back.')));
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+      Navigator.of(context)
+          .pushReplacement(appPageRoute<void>(const HomeScreen()));
     } on AuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -190,9 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: _loading
                               ? null
                               : () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const RegisterScreen(),
-                                  ),
+                                  appPageRoute<void>(const RegisterScreen()),
                                 ),
                           child: const Text(
                             'CREATE ONE',

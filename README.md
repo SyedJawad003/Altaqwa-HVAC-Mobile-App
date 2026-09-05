@@ -31,3 +31,7 @@ flutter run -d ios
 flutter devices          # see what is connected
 flutter run -d chrome    # web
 flutter run --release    # release build
+
+# Haider : for my phone
+flutter run -d c4e2c2ef
+flutter run -d A065

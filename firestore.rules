@@ -1,0 +1,253 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.email == 'admin@altaqwa.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isSupervisor() {
+      return signedIn() && exists(/databases/$(database)/documents/supervisors/$(request.auth.uid));
+    }
+    function isTechnician() {
+      return signedIn() && exists(/databases/$(database)/documents/technicians/$(request.auth.uid));
+    }
+
+    match /admins/{adminId} {
+      allow read: if signedIn() && (request.auth.uid == adminId || isAdmin() || isSupervisor());
+      allow create, update: if signedIn() && request.auth.uid == adminId;
+      allow delete: if isAdmin() && request.auth.uid != adminId;
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow create, update: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /technicians/{technicianId} {
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && request.auth.uid == technicianId);
+      allow create: if signedIn() && request.auth.uid == technicianId && request.resource.data.role == 'technician';
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == technicianId);
+      allow delete: if isAdmin();
+    }
+
+    match /supervisors/{supervisorId} {
+      allow read: if signedIn() && (request.auth.uid == supervisorId || isAdmin() || isSupervisor());
+      allow create, update: if signedIn() && request.auth.uid == supervisorId;
+      allow delete: if isAdmin();
+    }
+
+    function isAssignedTechnician() {
+      return signedIn() && (
+        resource.data.technicianUid == request.auth.uid ||
+        (
+          exists(/databases/$(database)/documents/technicians/$(request.auth.uid)) &&
+          resource.data.technicianName == get(/databases/$(database)/documents/technicians/$(request.auth.uid)).data.name
+        )
+      );
+    }
+
+    function technicianUpdateKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'status', 'progressStage', 'timeline', 'updatedAt',
+        'completedAt', 'completedBy', 'technicianNotes', 'materialsUsed',
+        'completionReport', 'photoUrls', 'verificationStatus',
+        'siteDetails'
+      ]);
+    }
+
+    function supervisorUpdateKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'verificationStatus', 'supervisorAction', 'supervisorNotes',
+        'supervisorReviewedAt', 'progressStage', 'timeline', 'status',
+        'updatedAt', 'costEstimate'
+      ]);
+    }
+
+    match /customer_service_requests/{document} {
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && (resource.data.customerUid == request.auth.uid || isAssignedTechnician()));
+      allow create: if signedIn() || isAdmin() || isSupervisor();
+      allow update: if isAdmin()
+        || (isSupervisor() && supervisorUpdateKeys())
+        || (isAssignedTechnician() && technicianUpdateKeys());
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin()
+        || (isSupervisor() && (resource.data.audience == 'supervisors' || resource.data.recipientUid == request.auth.uid))
+        || (signedIn() && resource.data.recipientUid == request.auth.uid);
+      allow create: if isAdmin() || isSupervisor() || isTechnician()
+        || (signedIn() && request.resource.data.senderUid == request.auth.uid)
+        || signedIn();
+      allow update: if signedIn() && resource.data.recipientUid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /job_issues/{issueId} {
+      allow read: if isAdmin() || isSupervisor();
+      allow create, update: if isAdmin() || isSupervisor();
+      allow delete: if isAdmin();
+    }
+
+    match /customer_site_details/{detailId} {
+      function detailsBelongToTechnician() {
+        return signedIn() && resource.data.technicianUid == request.auth.uid;
+      }
+      function detailsRequestAssignedToTechnician() {
+        return signedIn() && resource.data.requestId != null
+          && exists(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId))
+          && (
+            get(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId)).data.technicianUid == request.auth.uid
+            || (
+              exists(/databases/$(database)/documents/technicians/$(request.auth.uid))
+              && get(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId)).data.technicianName == get(/databases/$(database)/documents/technicians/$(request.auth.uid)).data.name
+            )
+          );
+      }
+      function detailsRequestBelongsToCustomer() {
+        return signedIn() && resource.data.requestId != null
+          && exists(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId))
+          && get(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId)).data.customerUid == request.auth.uid;
+      }
+      allow read: if isAdmin() || isSupervisor()
+        || detailsBelongToTechnician()
+        || detailsRequestAssignedToTechnician()
+        || detailsRequestBelongsToCustomer();
+      allow create: if isAdmin() || isSupervisor()
+        || (isTechnician() && request.resource.data.technicianUid == request.auth.uid)
+        || (signedIn() && request.resource.data.requestId != null
+            && exists(/databases/$(database)/documents/customer_service_requests/$(request.resource.data.requestId))
+            && (
+              get(/databases/$(database)/documents/customer_service_requests/$(request.resource.data.requestId)).data.technicianUid == request.auth.uid
+              || (
+                exists(/databases/$(database)/documents/technicians/$(request.auth.uid))
+                && get(/databases/$(database)/documents/customer_service_requests/$(request.resource.data.requestId)).data.technicianName == get(/databases/$(database)/documents/technicians/$(request.auth.uid)).data.name
+              )
+            )
+        )
+        || signedIn();
+      allow update: if isAdmin() || isSupervisor() || detailsBelongToTechnician() || detailsRequestAssignedToTechnician();
+      allow delete: if isAdmin();
+    }
+
+    match /site_issue/{issueId} {
+      function issueBelongToTechnician() {
+        return signedIn() && resource.data.technicianUid == request.auth.uid;
+      }
+      function issueRequestAssignedToTechnician() {
+        return signedIn() && resource.data.requestId != null
+          && exists(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId))
+          && (
+            get(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId)).data.technicianUid == request.auth.uid
+            || (
+              exists(/databases/$(database)/documents/technicians/$(request.auth.uid))
+              && get(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId)).data.technicianName == get(/databases/$(database)/documents/technicians/$(request.auth.uid)).data.name
+            )
+          );
+      }
+      function issueRequestBelongsToCustomer() {
+        return signedIn() && resource.data.requestId != null
+          && exists(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId))
+          && get(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId)).data.customerUid == request.auth.uid;
+      }
+      function issueCreateAllowedForTechnician() {
+        return signedIn() && request.resource.data.requestId != null
+          && exists(/databases/$(database)/documents/customer_service_requests/$(request.resource.data.requestId))
+          && (
+            request.resource.data.technicianUid == request.auth.uid
+            || get(/databases/$(database)/documents/customer_service_requests/$(request.resource.data.requestId)).data.technicianUid == request.auth.uid
+            || (
+              exists(/databases/$(database)/documents/technicians/$(request.auth.uid))
+              && get(/databases/$(database)/documents/customer_service_requests/$(request.resource.data.requestId)).data.technicianName == get(/databases/$(database)/documents/technicians/$(request.auth.uid)).data.name
+            )
+          );
+      }
+      allow read: if isAdmin() || isSupervisor()
+        || issueBelongToTechnician()
+        || issueRequestAssignedToTechnician()
+        || issueRequestBelongsToCustomer();
+      allow create: if isAdmin() || isSupervisor()
+        || isTechnician()
+        || issueCreateAllowedForTechnician()
+        || signedIn();
+      allow update: if isAdmin() || isSupervisor()
+        || isTechnician()
+        || issueBelongToTechnician()
+        || issueRequestAssignedToTechnician();
+      allow delete: if isAdmin();
+    }
+
+    match /quotations/{quotationId} {
+      allow read: if isAdmin() || isSupervisor()
+        || (signedIn() && resource.data.customerUid == request.auth.uid)
+        || (signedIn() && resource.data.requestId != null
+            && exists(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId))
+            && get(/databases/$(database)/documents/customer_service_requests/$(resource.data.requestId)).data.customerUid == request.auth.uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /customer_quote_requests/{requestId} {
+      function quoteBelongsToCustomer() {
+        return signedIn() && resource.data.customerUid == request.auth.uid;
+      }
+      function quoteCreateBelongsToCustomer() {
+        return signedIn() && request.resource.data.customerUid == request.auth.uid;
+      }
+      function statusKeysOnly() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt'
+        ]);
+      }
+      allow read: if isAdmin() || isSupervisor() || quoteBelongsToCustomer();
+      allow create: if isAdmin() || isSupervisor() || quoteCreateBelongsToCustomer() || signedIn();
+      allow update: if isAdmin()
+        || (isSupervisor() && statusKeysOnly())
+        || quoteBelongsToCustomer();
+      allow delete: if isAdmin();
+    }
+
+    match /chats/{chatId} {
+      function chatBelongsToCustomer() {
+        return signedIn() && (
+          chatId == ('chat_' + request.auth.uid) ||
+          (resource != null && resource.data.customerId == request.auth.uid)
+        );
+      }
+      function chatCreateBelongsToCustomer() {
+        return signedIn() && (
+          chatId == ('chat_' + request.auth.uid) ||
+          request.resource.data.customerId == request.auth.uid
+        );
+      }
+
+      allow read: if isAdmin() || isSupervisor() || chatBelongsToCustomer();
+      allow create: if isAdmin() || isSupervisor() || chatCreateBelongsToCustomer() || signedIn();
+      allow update: if isAdmin() || isSupervisor() || chatBelongsToCustomer() || signedIn();
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        function canReadMessage() {
+          return isAdmin() || isSupervisor() || (
+            signedIn() && (
+              chatId == ('chat_' + request.auth.uid) ||
+              (resource != null && resource.data.senderId == request.auth.uid)
+            )
+          );
+        }
+
+        allow read: if canReadMessage();
+        allow create: if isAdmin() || isSupervisor() || (
+          signedIn() &&
+          request.resource.data.senderId == request.auth.uid
+        );
+        allow update: if isAdmin() || isSupervisor() || (
+          signedIn() && chatId == ('chat_' + request.auth.uid)
+        );
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}

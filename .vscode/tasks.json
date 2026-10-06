@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Supervisor Web App",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run", "-d", "chrome", "-t", "lib/main_supervisor.dart", "--web-port", "5603"],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "dart",
+        "pattern": {"regexp": ".*", "file": 1, "line": 2, "message": 3},
+        "background": {"activeOnStart": true, "beginsPattern": ".*", "endsPattern": "The Flutter DevTools debugger and profiler"}
+      }
+    },
+    {
+      "label": "Run Admin Web App",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run", "-d", "chrome", "-t", "lib/main_admin.dart", "--web-port", "5601"],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "dart",
+        "pattern": {"regexp": ".*", "file": 1, "line": 2, "message": 3},
+        "background": {"activeOnStart": true, "beginsPattern": ".*", "endsPattern": "The Flutter DevTools debugger and profiler"}
+      }
+    },
+    {
+      "label": "Run Customer Web App",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run", "-d", "chrome", "-t", "lib/main_customer.dart", "--web-port", "5602"],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "dart",
+        "pattern": {"regexp": ".*", "file": 1, "line": 2, "message": 3},
+        "background": {"activeOnStart": true, "beginsPattern": ".*", "endsPattern": "The Flutter DevTools debugger and profiler"}
+      }
+    },
+    {
+      "label": "Run Admin + Customer Web Apps",
+      "dependsOn": ["Run Admin Web App", "Run Customer Web App"],
+      "dependsOrder": "parallel"
+    }
+  ]
+}
